@@ -1,0 +1,1392 @@
+PROMPT PARA CLAUDE — REDESIGN E EVOLUÇÃO FUNCIONAL COMPLETA DO MYRIAD
+
+CONTEXTO GERAL
+
+Você vai trabalhar no MYRIAD, um sistema interno que já funciona de verdade e NÃO é um mockup nem um projeto conceitual.
+
+O MYRIAD é um sistema local para administrar uma operação de distribuição de conteúdo via celulares Android físicos conectados ao computador. Hoje ele é usado principalmente para Instagram. O sistema controla aparelhos físicos, contas, fila de postagens, horários, limites, aquecimento, publicação de Reels e carrosséis, coleta de views, watchdog de travamentos e conexão sem fio. Existe também uma “fábrica” separada que renderiza vídeos e entrega os arquivos prontos para o MYRIAD.
+
+IMPORTANTE:
+- O sistema já funciona.
+- Não reescreva o motor inteiro sem necessidade.
+- Não quebre a automação existente.
+- Não transforme funções reais em mocks.
+- Não crie botões falsos.
+- Não esconda bugs com interface bonita.
+- A prioridade é transformar o painel atual em uma ferramenta REAL DE ADMINISTRAÇÃO E CONTROLE.
+- O painel deve refletir e controlar o estado real da operação.
+- Antes de alterar qualquer coisa, inspecione o código atual, banco/arquivos de estado, rotas, workers, scheduler, watchdog, coleta de views e mecanismos de conexão.
+- Reaproveite o máximo possível da arquitetura existente.
+- Se precisar criar endpoints, serviços, migrations ou novas estruturas de dados, faça de forma compatível e organizada.
+- Se alguma função visual exigir backend que ainda não existe, implemente o backend real correspondente quando for razoável. Não deixe um botão que apenas “parece funcionar”.
+- Se houver alguma operação perigosa ou destrutiva, use confirmação explícita.
+
+O PROBLEMA ATUAL
+
+O painel atual parece mais um CRM / dashboard de leitura do que uma central de operação.
+
+Hoje ele basicamente:
+- mostra aparelhos;
+- lista contas;
+- mostra números de posts;
+- mostra regras;
+- lista arquivos da biblioteca;
+- mostra instruções para conectar aparelho;
+- despeja logs técnicos.
+
+O problema é que eu consigo VER as coisas, mas quase não consigo ADMINISTRÁ-LAS.
+
+Exemplos:
+- vejo uma conta, mas não consigo facilmente pausar, editar, remover do rodízio ou excluir;
+- vejo posts, mas não consigo controlar claramente fila, agenda, cancelamento, retry, publicação imediata, etc.;
+- vejo vídeos da biblioteca, mas eles parecem arquivos numa pasta, não objetos administráveis;
+- vejo o aparelho, mas ele é quase decorativo;
+- vejo erros técnicos, mas não tenho uma camada operacional amigável;
+- vejo regras de automação, mas a página parece quase read-only;
+- “Conectar aparelho” é praticamente uma documentação, não um fluxo guiado real.
+
+OBJETIVO PRINCIPAL
+
+Transformar o MYRIAD de:
+
+“painel que mostra o que existe”
+
+para:
+
+“CONTROL PLANE / CENTRAL DE COMANDO da operação”.
+
+A regra de UX principal é:
+
+SE EU VEJO ALGO NO MYRIAD, EU DEVO CONSEGUIR ADMINISTRÁ-LO DALI.
+
+Para cada entidade importante, a interface deve responder:
+
+1. O que está acontecendo agora?
+2. O que vai acontecer depois?
+3. O que eu posso fazer com isso?
+
+FILOSOFIA DO PRODUTO
+
+Não pense no MYRIAD como “um bot que posta Reels”.
+
+Pense como:
+
+MYRIAD = sistema operacional da operação de distribuição de conteúdo.
+
+O aparelho é um worker físico.
+A conta é um ativo operacional.
+O post é um job.
+A biblioteca é um inventário de conteúdo.
+A automação define políticas e regras.
+O analytics mede resultado.
+Incidentes mostram problemas e recuperação.
+A tela inicial mostra a saúde geral da operação.
+
+REFERÊNCIA VISUAL / CONCEITUAL
+
+A referência é o painel do Profit Phones.
+
+Não quero uma cópia pixel a pixel.
+
+Quero absorver a lógica:
+- sensação de “central de comando”;
+- aparelhos como workers visuais;
+- alta densidade de informação útil;
+- separação clara entre Devices, Accounts, Posts, Automation, Library etc.;
+- operação parece viva;
+- estado real é visível;
+- escala fica evidente;
+- interface serve para controlar, não só observar.
+
+A estética atual do MYRIAD pode continuar escura, verde/preto, minimalista e séria, mas precisa parecer produto maduro.
+
+A interface precisa parecer:
+- operacional;
+- técnica;
+- organizada;
+- confiável;
+- viva;
+- clara;
+- sem excesso de cards inúteis;
+- sem áreas vazias gigantes;
+- sem “dashboard de template”.
+
+NAVEGAÇÃO DESEJADA
+
+Sidebar sugerida:
+
+MYRIAD
+
+1. Visão Geral
+2. Aparelhos
+3. Contas
+4. Posts
+5. Biblioteca
+6. Automação
+7. Analytics
+
+separador
+
+8. Incidentes
+9. Conectar aparelho
+
+Na parte inferior ou em um bloco discreto:
+- Instagram — ATIVO
+- TikTok — EM BREVE
+- YouTube — EM BREVE
+- Facebook — EM BREVE
+
+Por enquanto, Instagram é o foco real.
+Não implemente funcionalidades falsas para as outras plataformas.
+Elas podem aparecer visualmente como “em breve”.
+
+==================================================
+1. VISÃO GERAL / CONTROL CENTER
+==================================================
+
+Criar uma página inicial real.
+
+Objetivo:
+abrir o MYRIAD e entender em 5 segundos como está toda a operação.
+
+Topo:
+- nome MYRIAD;
+- estado global da operação;
+- algo como:
+  “Operação normal”
+  “Atenção”
+  “Operação pausada”
+  “Falha crítica”
+
+Indicadores principais:
+- aparelhos online / total;
+- contas ativas;
+- posts publicados hoje / meta prevista;
+- itens na fila;
+- quantidade de conteúdo disponível;
+- content buffer em dias;
+- falhas/incidentes atuais;
+- taxa de sucesso de postagens;
+- views de hoje ou últimas 24h, se já houver dados confiáveis.
+
+IMPORTANTE:
+“Content buffer” é mais útil do que apenas “25 vídeos”.
+
+Exemplo:
+25 vídeos restantes
+≈ 2,8 dias de conteúdo no ritmo atual
+
+Calcular isso de forma real com base no ritmo de postagem das contas ativas.
+
+Se não houver dados suficientes, mostrar claramente:
+“Buffer indisponível — faltam dados de programação”.
+
+Seção “Agora”:
+mostrar o que cada aparelho está fazendo neste momento.
+
+Exemplo:
+Galaxy A15 #01
+● aguardando próximo slot
+Conta atual: @exemplo.corp
+Próxima ação: Reel #172 às 09:30
+
+Ou:
+● POSTANDO
+@exemplo.mind
+reel172.mp4
+etapa atual: Publicando
+
+Seção “Próximas execuções”:
+- próximos posts;
+- horário;
+- conta;
+- conteúdo;
+- aparelho previsto;
+- status.
+
+Seção “Atividade recente”:
+exemplos:
+- Reel publicado;
+- views coletadas;
+- aparelho reconectado;
+- Instagram reiniciado pelo watchdog;
+- post reagendado;
+- erro resolvido automaticamente.
+
+Seção “Saúde do sistema”:
+- Scheduler;
+- Worker;
+- aparelho(s);
+- ADB;
+- Instagram;
+- watchdog;
+- coletor de views;
+- fábrica, se houver integração detectável;
+- banco/estado, se fizer sentido.
+
+Não inventar saúde “verde”.
+O estado precisa vir de sinais reais quando possível.
+
+==================================================
+2. APARELHOS
+==================================================
+
+A tela de aparelhos deve ser visual e operacional.
+
+Os mockups de celular podem continuar, mas menores e mais informativos.
+
+Cada card de aparelho deve mostrar:
+- nome do aparelho;
+- modelo real;
+- identificador;
+- online/offline;
+- conexão USB/Wi-Fi;
+- bateria, se disponível;
+- carregando ou não;
+- app/plataforma ativa;
+- conta atual ou contas associadas;
+- estado do worker;
+- última atividade;
+- próxima atividade;
+- watchdog;
+- ADB;
+- erro atual, se houver.
+
+Estados possíveis claros:
+- ONLINE;
+- OFFLINE;
+- POSTANDO;
+- AGUARDANDO;
+- PAUSADO;
+- RECONECTANDO;
+- ERRO;
+- SEM CONTA;
+- MANUTENÇÃO, se necessário.
+
+LED visual:
+- verde = normal/online;
+- amarelo = atenção/recuperação;
+- vermelho = erro/offline;
+- cinza = inativo.
+
+Não dependa apenas da cor. Mostrar texto junto.
+
+Ao clicar num aparelho:
+abrir drawer lateral ou página detalhada.
+
+DETALHE DO APARELHO
+
+Mostrar:
+- modelo;
+- Android;
+- serial;
+- IP atual;
+- tipo de conexão;
+- bateria;
+- uptime do worker;
+- última comunicação;
+- contas associadas;
+- post em execução;
+- próxima tarefa;
+- histórico recente;
+- falhas recentes.
+
+AÇÕES REAIS:
+- testar conexão;
+- reconectar;
+- reiniciar worker/robô;
+- reiniciar Instagram;
+- pausar aparelho;
+- retomar aparelho;
+- trocar USB/Wi-Fi quando suportado;
+- desassociar conta;
+- remover aparelho;
+- abrir detalhes técnicos/logs.
+
+Operações destrutivas precisam de confirmação.
+
+Se for possível tecnicamente e seguro:
+- mostrar uma mini visão do estado/tela atual do aparelho;
+- ou ao menos a etapa corrente da automação.
+
+Exemplo de etapa:
+✓ acordar aparelho
+✓ abrir Instagram
+✓ selecionar mídia
+→ publicando
+○ confirmar publicação
+○ registrar resultado
+
+Se o motor atual não expõe etapas, criar eventos de progresso no worker de maneira limpa, se viável.
+
+==================================================
+3. CONTAS
+==================================================
+
+A tela atual não pode ser apenas uma tabela de cadastro.
+
+Conta precisa ser uma entidade administrável.
+
+Tabela/listagem sugerida:
+- conta;
+- plataforma;
+- estado;
+- aparelho associado;
+- posts hoje / limite;
+- último post;
+- próximo post;
+- aquecimento;
+- views 24h / 7d se disponível;
+- fila;
+- menu de ações.
+
+Adicionar:
+- busca;
+- filtros;
+- seleção múltipla.
+
+Estados de conta:
+- ATIVA;
+- PAUSADA;
+- AQUECENDO;
+- FORA DO RODÍZIO;
+- ATENÇÃO;
+- SEM APARELHO;
+- ERRO, se necessário.
+
+Menu “⋮” por conta:
+- Ver detalhes;
+- Postar agora;
+- Pausar;
+- Retomar;
+- Editar;
+- Editar regras;
+- Adicionar ao rodízio;
+- Remover do rodízio;
+- Mudar aparelho;
+- Ver posts;
+- Ver analytics;
+- Remover conta.
+
+IMPORTANTE:
+“Remover do rodízio” e “Remover conta” são ações diferentes.
+
+Remover do rodízio:
+mantém cadastro, histórico, analytics e configurações.
+
+Remover conta:
+remove a conta operacional do MYRIAD.
+Preservar histórico quando possível ou pedir confirmação sobre histórico.
+
+DETAIL VIEW DA CONTA
+
+Mostrar:
+- @username;
+- plataforma;
+- status;
+- aparelho;
+- estágio de aquecimento;
+- limite diário;
+- posts feitos hoje;
+- próxima postagem;
+- última postagem;
+- intervalo mínimo;
+- janela de postagem;
+- conteúdo na fila;
+- views recentes;
+- erros recentes;
+- histórico de posts.
+
+AÇÕES:
+- publicar próximo agora;
+- adicionar conteúdo à fila;
+- pausar;
+- editar regras;
+- trocar aparelho;
+- retirar do rodízio;
+- remover.
+
+OVERRIDE POR CONTA
+
+Precisa existir uma hierarquia de configuração:
+
+Configuração global
+↓
+Override da conta
+↓
+Override excepcional do post
+
+Exemplo:
+global = 3 posts/dia
+@exemplo.corp = 5 posts/dia
+@exemplo.systems = 1 post/dia + aquecimento
+
+Não duplicar configuração desnecessariamente.
+Mostrar claramente quando uma conta:
+- herda o global;
+- possui override.
+
+==================================================
+4. POSTS — UMA DAS TELAS MAIS IMPORTANTES
+==================================================
+
+A página Posts precisa ser reconstruída como central de jobs.
+
+Não usar essa página para despejar logs ADB brutos.
+
+Criar abas/filtros:
+- Todos;
+- Fila;
+- Agendados;
+- Publicando;
+- Publicados;
+- Erros;
+- Cancelados, se houver.
+
+Filtros:
+- conta;
+- aparelho;
+- formato;
+- data;
+- status;
+- busca por arquivo/nome/ID.
+
+Cada post deve mostrar:
+- thumbnail;
+- nome/arquivo;
+- conta;
+- tipo: Reel / carrossel;
+- horário;
+- aparelho;
+- status;
+- tentativas;
+- views, após publicação;
+- ação rápida.
+
+Estados sugeridos:
+- NOVO;
+- NA FILA;
+- AGENDADO;
+- PREPARANDO;
+- POSTANDO;
+- PUBLICADO;
+- FALHOU;
+- CANCELADO;
+- REAGENDADO.
+
+AÇÕES POR POST
+
+Para post na fila/agendado:
+- Publicar agora;
+- Reagendar;
+- Mudar conta;
+- Mudar aparelho, se arquitetura permitir;
+- Substituir mídia;
+- Editar legenda/campos relevantes, se suportados;
+- Cancelar;
+- Remover.
+
+Para post com erro:
+- Tentar novamente agora;
+- Reagendar;
+- Mudar aparelho;
+- Cancelar;
+- Ver erro;
+- Ver detalhes técnicos.
+
+Para post publicado:
+- Ver detalhes;
+- Ver views;
+- atualizar/coletar views agora, se suportado;
+- abrir no histórico;
+- arquivar;
+- eventualmente replicar/duplicar job, se fizer sentido.
+
+DETAIL VIEW DO POST
+
+Mostrar:
+- thumbnail/player;
+- ID;
+- arquivo;
+- conta;
+- aparelho;
+- formato;
+- legenda, se disponível;
+- criado em;
+- agendado para;
+- iniciado em;
+- publicado em;
+- status;
+- tentativas;
+- duração;
+- views coletadas;
+- histórico completo de eventos.
+
+TIMELINE DO JOB
+
+Exemplo:
+09:28 Criado
+09:29 Entrou na fila
+09:30 Worker assumiu job
+09:30 Instagram aberto
+09:31 Upload iniciado
+09:32 Publicado
+09:34 confirmação detectada
+10:34 views coletadas: 4.211
+
+ERRO AMIGÁVEL
+
+Não mostrar como principal:
+Command ["C:\platform-tools\adb.EXE", ...]
+
+Mostrar primeiro:
+“Galaxy A15 perdeu conexão durante a publicação.”
+
+Abaixo:
+- horário;
+- tentativas;
+- recuperação;
+- ação sugerida.
+
+Botão:
+“Ver detalhes técnicos”
+
+Aí sim exibir stack/log bruto.
+
+SLOTS / CALENDÁRIO
+
+A seção “Slots de hoje” deve virar uma visualização útil.
+
+Mostrar:
+- agenda do dia;
+- horários;
+- conta;
+- conteúdo;
+- estado;
+- conflito, se houver.
+
+Idealmente permitir:
+- clicar no slot;
+- reagendar;
+- trocar conteúdo;
+- cancelar;
+- criar slot manual.
+
+Se simples de implementar:
+fornecer visão:
+- Lista;
+- Dia.
+
+Não precisa construir calendário complexo se for desnecessário.
+
+==================================================
+5. BIBLIOTECA
+==================================================
+
+Hoje parece apenas uma listagem de arquivos.
+
+Transformar em inventário visual de conteúdo.
+
+Estados:
+- RENDERIZANDO;
+- PRONTO;
+- NA FILA;
+- AGENDADO;
+- PUBLICADO;
+- ARQUIVADO;
+- ERRO, se necessário.
+
+Visual:
+grid ou tabela híbrida com:
+- thumbnail;
+- nome;
+- duração;
+- data de criação;
+- status;
+- conta destino, se houver;
+- agendamento;
+- uso anterior;
+- views, quando publicado.
+
+AÇÕES:
+- visualizar;
+- reproduzir;
+- adicionar à fila;
+- agendar;
+- escolher conta;
+- escolher formato se aplicável;
+- editar metadados;
+- abrir localização/pasta se útil;
+- arquivar;
+- excluir.
+
+Seleção em massa:
+- adicionar vários à fila;
+- escolher conta;
+- arquivar;
+- excluir;
+- marcar estado, se necessário.
+
+Busca e filtros:
+- nome;
+- estado;
+- data;
+- conta;
+- formato.
+
+DETAIL VIEW DO CONTEÚDO
+
+Mostrar:
+- player;
+- thumbnail;
+- nome;
+- arquivo;
+- duração;
+- tamanho;
+- criado em;
+- origem/fábrica;
+- estado;
+- conta;
+- agenda;
+- histórico de publicação;
+- performance.
+
+IMPORTANTE:
+o mesmo conteúdo pode ter relação com posts/jobs diferentes.
+Não misturar “arquivo de mídia” com “instância de postagem”.
+
+MODELO CONCEITUAL:
+MEDIA/CONTEÚDO
+↓
+POST/JOB
+↓
+PUBLICAÇÃO
+
+A biblioteca contém mídia.
+Posts contém jobs/publicações.
+
+==================================================
+6. AUTOMAÇÃO
+==================================================
+
+Essa página precisa ser realmente editável.
+
+Mostrar estado global:
+- Automação ativa;
+- Pausada;
+- Em recuperação;
+- Erro.
+
+Ações:
+- Pausar tudo;
+- Retomar tudo;
+- salvar regras;
+- restaurar padrão, se necessário.
+
+REGRAS GLOBAIS
+
+Editar:
+- posts por conta/dia;
+- intervalo mínimo;
+- janela de postagem;
+- aquecimento;
+- comportamento da fila;
+- distribuição de horários;
+- variação de horário, caso já exista;
+- tentativas após erro;
+- timeout;
+- comportamento após falha;
+- watchdog;
+- reconexão.
+
+Se algumas regras ainda não existem no motor, NÃO fingir que existem.
+Só expor o que realmente pode ser controlado.
+Se for fácil e seguro implementar novas regras úteis, implementar.
+
+ESTRUTURAR EM BLOCOS:
+
+A) Programação
+- posts/dia;
+- intervalo;
+- janela;
+- slots.
+
+B) Distribuição
+- rodízio;
+- ordem das contas;
+- prioridade;
+- preenchimento automático de horários.
+
+C) Recuperação
+- número de retries;
+- atraso entre retries;
+- se aparelho cair;
+- se Instagram travar;
+- se post falhar.
+
+D) Segurança operacional
+- pausar aparelho após X falhas consecutivas;
+- pausar conta após X falhas;
+- alerta de fila vazia;
+- alerta de buffer baixo.
+
+AQUECIMENTO
+
+Aquecimento não deve ser apenas “Ligado”.
+
+Mostrar:
+- quais contas estão em aquecimento;
+- estágio;
+- limite atual;
+- progressão;
+- próxima mudança.
+
+Se o motor já tem uma lógica de aquecimento, apenas torná-la visível e administrável.
+
+==================================================
+7. ANALYTICS
+==================================================
+
+Criar apenas com dados reais.
+
+Objetivo:
+medir se a operação está produzindo resultado.
+
+Métricas úteis:
+- views por conta;
+- views por post;
+- posts por dia;
+- taxa de sucesso;
+- falhas;
+- média de views;
+- mediana se útil;
+- melhor conteúdo;
+- pior conteúdo;
+- desempenho por horário;
+- desempenho por conta;
+- desempenho por formato;
+- crescimento diário/semanal.
+
+Filtros:
+- período;
+- conta;
+- formato.
+
+Não criar gráficos só por estética.
+Cada gráfico deve responder uma pergunta real.
+
+Exemplos:
+- Views por dia;
+- Posts vs views;
+- Top contas;
+- Top conteúdos;
+- Taxa de falha;
+- Horários mais fortes.
+
+Como o coletor automático de views já existe, aproveitar esses dados.
+
+==================================================
+8. INCIDENTES
+==================================================
+
+Criar uma página separada para falhas e eventos operacionais.
+
+Não poluir Posts com logs técnicos.
+
+Categorias:
+- aparelhos;
+- conexão;
+- Instagram;
+- worker;
+- postagem;
+- coleta de views;
+- scheduler;
+- watchdog;
+- sistema.
+
+Severidade:
+- INFO;
+- ATENÇÃO;
+- ERRO;
+- CRÍTICO.
+
+Status:
+- aberto;
+- recuperando;
+- resolvido automaticamente;
+- resolvido manualmente.
+
+Exemplo amigável:
+
+🔴 Galaxy A15 desconectado
+01:24
+Conexão Wi-Fi perdida.
+Tentando reconectar automaticamente.
+Tentativa 3/10
+
+[Abrir aparelho]
+[Reconectar agora]
+[Ver detalhes técnicos]
+
+Exemplo resolvido:
+
+🟢 Instagram travou
+00:58
+Watchdog reiniciou o aplicativo.
+Resolvido automaticamente em 11s.
+
+Logs brutos:
+somente dentro de detalhes técnicos.
+
+Criar filtros:
+- hoje;
+- abertos;
+- resolvidos;
+- aparelho;
+- conta;
+- severidade.
+
+==================================================
+9. CONECTAR APARELHO
+==================================================
+
+Hoje essa página é documentação.
+Transformar em wizard real de provisionamento.
+
+FLUXO:
+
+PASSO 1 — Detectar
+“Conecte o Android via USB.”
+
+Sistema detecta:
+- fabricante;
+- modelo;
+- serial;
+- Android;
+- estado ADB.
+
+Mostrar:
+✓ Galaxy A15 detectado
+
+PASSO 2 — Permissões
+Verificar:
+- depuração USB;
+- autorização ADB;
+- acesso necessário;
+- Instagram instalado;
+- componentes do MYRIAD.
+
+PASSO 3 — Teste
+- testar toque;
+- abrir app;
+- testar comunicação;
+- testar worker.
+
+PASSO 4 — Conexão
+Escolher quando suportado:
+- USB;
+- Wi-Fi.
+
+Testar Wi-Fi antes de confirmar.
+
+PASSO 5 — Nome
+Exemplo:
+Galaxy A15 #01
+
+PASSO 6 — Adicionar à frota
+Mostrar resumo.
+Botão real:
+“Adicionar aparelho”
+
+Após adicionar:
+ir para detalhe do aparelho.
+
+Se alguma etapa exigir ação manual no celular, dizer exatamente o que fazer e detectar automaticamente quando estiver concluída.
+
+==================================================
+10. UX BÁSICA QUE FAZ DIFERENÇA
+==================================================
+
+Adicionar em todas as áreas relevantes:
+
+BUSCA
+- contas;
+- posts;
+- biblioteca;
+- aparelhos.
+
+FILTROS
+- status;
+- data;
+- conta;
+- aparelho;
+- formato.
+
+SELEÇÃO EM MASSA
+Contas:
+- pausar;
+- retomar;
+- colocar no rodízio;
+- tirar do rodízio.
+
+Posts:
+- reagendar;
+- cancelar;
+- remover;
+- retry.
+
+Biblioteca:
+- agendar;
+- adicionar à fila;
+- arquivar;
+- excluir.
+
+MENU DE AÇÕES
+Usar “⋮” em linhas/cards quando apropriado.
+
+CONFIRMAÇÃO
+Exigir para:
+- excluir conta;
+- remover aparelho;
+- excluir mídia;
+- cancelar operação crítica;
+- limpar histórico.
+
+TOASTS / FEEDBACK
+Toda ação precisa de retorno:
+- sucesso;
+- falha;
+- processando.
+
+Exemplo:
+“@exemplo.corp pausada.”
+“Post reagendado para 14:30.”
+“Falha ao reconectar Galaxy A15.”
+
+EMPTY STATES
+Não deixar caixa vazia sem contexto.
+
+Exemplo:
+“Nenhum post agendado hoje.”
+[Adicionar à fila]
+
+LOADING STATES
+Mostrar carregamento real.
+Evitar tela piscando.
+
+ERROS
+Mostrar mensagem humana.
+Detalhe técnico apenas sob demanda.
+
+==================================================
+11. MODELO DE DADOS / ARQUITETURA CONCEITUAL
+==================================================
+
+Antes de mudar o banco, inspecione o modelo atual.
+
+A separação conceitual desejada é:
+
+DEVICE
+- aparelho físico;
+- conexão;
+- worker;
+- estado.
+
+ACCOUNT
+- conta social;
+- estado;
+- regras;
+- aparelho associado;
+- aquecimento.
+
+MEDIA
+- arquivo de vídeo/carrossel;
+- metadados;
+- origem;
+- lifecycle.
+
+POST/JOB
+- instância de publicação;
+- conta;
+- mídia;
+- horário;
+- status;
+- tentativas;
+- resultado.
+
+AUTOMATION POLICY
+- regras globais;
+- overrides de conta.
+
+EVENT/INCIDENT
+- eventos operacionais;
+- erros;
+- recuperação;
+- resolução.
+
+ANALYTICS
+- views;
+- performance;
+- agregações.
+
+IMPORTANTE:
+não amarrar ACCOUNT permanentemente a DEVICE no modelo.
+A conta pode mudar de aparelho.
+
+Não misturar MEDIA com POST.
+
+Não usar logs brutos como fonte primária da interface.
+
+==================================================
+12. EVENTOS E OBSERVABILIDADE
+==================================================
+
+O painel precisa parecer vivo.
+
+Criar ou reutilizar um sistema de eventos operacionais.
+
+Eventos úteis:
+- device.online;
+- device.offline;
+- device.reconnecting;
+- worker.started;
+- worker.stopped;
+- post.queued;
+- post.started;
+- post.step;
+- post.published;
+- post.failed;
+- post.retrying;
+- account.paused;
+- account.resumed;
+- views.collected;
+- watchdog.recovered;
+- automation.paused;
+- automation.resumed.
+
+Não precisa necessariamente usar exatamente esses nomes.
+Adapte ao stack existente.
+
+O objetivo é:
+o frontend conseguir mostrar estado, progresso e histórico sem ficar lendo log textual bruto.
+
+==================================================
+13. DESIGN
+==================================================
+
+A estética deve continuar:
+- dark;
+- fundo quase preto;
+- verde como acento;
+- tipografia limpa;
+- contraste bom;
+- aparência técnica.
+
+Mas melhorar muito:
+- hierarquia;
+- espaçamento;
+- densidade;
+- estados;
+- botões;
+- tabelas;
+- drawers;
+- modais;
+- feedback;
+- responsividade.
+
+Evitar:
+- cards gigantes com pouca informação;
+- telefone enorme ocupando a tela;
+- excesso de glow;
+- bordas exageradas;
+- dashboard genérico de SaaS;
+- muitas cores;
+- texto cinza ilegível;
+- espaços vazios enormes.
+
+A interface precisa passar:
+“infraestrutura em produção”.
+
+APARELHOS:
+usar mockups de celular de forma funcional, não decorativa.
+
+O LED de estado deve refletir estado real.
+
+==================================================
+14. NÃO COPIAR COISAS DESNECESSÁRIAS DO PROFIT PHONES
+==================================================
+
+Não adicionar só porque a referência tem:
+- Billing;
+- Referral;
+- Support;
+- Resources;
+- Proxies;
+- Scripts;
+- Applications.
+
+MYRIAD é interno.
+
+Só adicionar uma área se houver necessidade operacional real.
+
+“Scripts” pode permanecer interno/engenharia.
+“Applications” só faz sentido quando multi-plataforma for real.
+“Proxies” só se a arquitetura realmente precisar.
+
+==================================================
+15. SEGURANÇA CONTRA REGRESSÃO
+==================================================
+
+Muito importante:
+
+O sistema já funciona há semanas.
+Antes de qualquer refatoração relevante:
+
+1. identificar os fluxos críticos atuais;
+2. localizar código de:
+   - scheduler;
+   - posting worker;
+   - ADB;
+   - Wi-Fi;
+   - watchdog;
+   - account rotation;
+   - warming;
+   - reels;
+   - carrosséis;
+   - views collector;
+   - library;
+3. mapear dependências;
+4. evitar reescrever lógica sem necessidade;
+5. criar testes básicos para fluxos críticos onde for possível;
+6. manter compatibilidade com dados existentes.
+
+Não quero ganhar uma interface bonita e perder confiabilidade.
+
+O MOTOR TEM PRIORIDADE SOBRE A UI.
+
+==================================================
+16. ESTRATÉGIA DE IMPLEMENTAÇÃO
+==================================================
+
+Não faça uma refatoração cega de tudo de uma vez.
+
+Primeiro:
+AUDITE O PROJETO.
+
+Me entregue internamente/na resposta um resumo curto:
+- stack;
+- estrutura;
+- arquivos-chave;
+- modelo de dados;
+- como frontend fala com backend;
+- como estado é persistido;
+- quais funções pedidas já existem;
+- quais exigem backend novo;
+- principais riscos.
+
+Depois implemente em fases lógicas.
+
+ORDEM RECOMENDADA:
+
+FASE 1
+- base visual/layout;
+- Visão Geral;
+- padronização de componentes;
+- drawers/modais/toasts;
+- eventos/estado.
+
+FASE 2
+- Contas administráveis;
+- ações de pausar/retomar;
+- rodízio;
+- remover;
+- overrides.
+
+FASE 3
+- Posts como jobs administráveis;
+- fila;
+- agenda;
+- retry;
+- cancelar;
+- publicar agora;
+- detalhes.
+
+FASE 4
+- Biblioteca visual;
+- lifecycle;
+- agendar;
+- adicionar à fila;
+- excluir;
+- seleção múltipla.
+
+FASE 5
+- Aparelhos como workers administráveis;
+- reconexão;
+- reinício;
+- status;
+- detalhe;
+- atividade atual.
+
+FASE 6
+- Automação editável;
+- políticas;
+- recovery.
+
+FASE 7
+- Incidentes;
+- logs amigáveis;
+- detalhes técnicos.
+
+FASE 8
+- Analytics.
+
+FASE 9
+- Wizard de conectar aparelho.
+
+Essa ordem pode ser ajustada se a arquitetura atual indicar outra sequência melhor.
+
+==================================================
+17. REQUISITOS DE QUALIDADE
+==================================================
+
+Não considerar a tarefa concluída se:
+
+- houver botão sem função;
+- houver dados fake;
+- status não refletir estado real;
+- ações destrutivas não tiverem confirmação;
+- logs brutos continuarem dominando telas de operação;
+- não for possível pausar/remover conta;
+- não for possível administrar posts;
+- não for possível controlar fila/agenda;
+- biblioteca continuar sendo apenas lista de nomes;
+- aparelhos continuarem quase decorativos;
+- Automação continuar read-only;
+- erros não tiverem ação de recuperação;
+- estados não forem claros.
+
+==================================================
+18. CRITÉRIOS DE ACEITAÇÃO
+==================================================
+
+CONTAS
+[ ] consigo abrir uma conta;
+[ ] consigo pausar;
+[ ] consigo retomar;
+[ ] consigo tirar do rodízio;
+[ ] consigo recolocar no rodízio;
+[ ] consigo editar regras;
+[ ] consigo ver posts da conta;
+[ ] consigo remover a conta;
+[ ] consigo diferenciar remoção do rodízio de exclusão.
+
+POSTS
+[ ] consigo ver claramente fila;
+[ ] consigo ver agendados;
+[ ] consigo ver publicados;
+[ ] consigo ver erros;
+[ ] consigo abrir um post;
+[ ] consigo publicar agora;
+[ ] consigo reagendar;
+[ ] consigo cancelar;
+[ ] consigo retry;
+[ ] consigo ver timeline;
+[ ] consigo ver views após publicação.
+
+BIBLIOTECA
+[ ] consigo ver thumbnail/player;
+[ ] consigo buscar;
+[ ] consigo filtrar;
+[ ] consigo agendar;
+[ ] consigo adicionar à fila;
+[ ] consigo selecionar conta;
+[ ] consigo excluir;
+[ ] consigo saber o estado do conteúdo.
+
+APARELHOS
+[ ] consigo saber se está online;
+[ ] consigo saber o que está fazendo;
+[ ] consigo saber próxima ação;
+[ ] consigo testar conexão;
+[ ] consigo reconectar;
+[ ] consigo reiniciar worker;
+[ ] consigo reiniciar Instagram;
+[ ] consigo pausar aparelho;
+[ ] consigo ver detalhes;
+[ ] consigo remover aparelho.
+
+AUTOMAÇÃO
+[ ] consigo editar regras globais;
+[ ] consigo pausar tudo;
+[ ] consigo retomar;
+[ ] consigo ver comportamento de recovery;
+[ ] consigo ver aquecimento;
+[ ] consigo diferenciar global vs override.
+
+INCIDENTES
+[ ] erros são humanos;
+[ ] logs técnicos ficam em detalhes;
+[ ] consigo saber se foi resolvido;
+[ ] consigo executar ação corretiva.
+
+VISÃO GERAL
+[ ] em 5 segundos eu sei se está tudo normal;
+[ ] sei quantos aparelhos estão online;
+[ ] sei quantas contas estão ativas;
+[ ] sei quantos posts saíram;
+[ ] sei o tamanho da fila;
+[ ] sei o buffer;
+[ ] sei os próximos jobs;
+[ ] sei se há incidente.
+
+CONECTAR
+[ ] fluxo detecta aparelho;
+[ ] testa;
+[ ] orienta;
+[ ] adiciona à frota;
+[ ] não é apenas texto de documentação.
+
+==================================================
+19. INSTRUÇÃO FINAL
+==================================================
+
+Quero que você trate isso como uma evolução séria de produto e arquitetura, não como “melhorar o CSS”.
+
+Primeiro entenda o sistema real.
+
+Depois transforme o painel numa CENTRAL DE OPERAÇÃO.
+
+Prioridade:
+1. controle;
+2. clareza;
+3. confiabilidade;
+4. observabilidade;
+5. velocidade de uso;
+6. visual.
+
+Não remova uma função existente só porque ela não está bonita.
+Não altere comportamento crítico sem entender.
+Não esconda erro.
+Não faça mock.
+
+O objetivo final é eu conseguir administrar minha operação inteira dentro do MYRIAD sem precisar ficar:
+- entrando no banco;
+- olhando pasta;
+- lendo log bruto;
+- abrindo terminal;
+- procurando arquivo;
+- mexendo manualmente em configuração;
+- tentando adivinhar o que o robô está fazendo.
+
+O painel deve ser a fonte central de verdade operacional.
+
+Ao terminar cada etapa:
+- explique o que mudou;
+- quais arquivos foram alterados;
+- quais endpoints/estruturas foram criados;
+- se houve migration;
+- como testar;
+- quais funções ainda dependem de trabalho futuro;
+- quais riscos ou débitos técnicos ficaram.
+
+Se encontrar uma solução arquitetural melhor do que a descrita aqui, pode propor e aplicar, desde que preserve estes objetivos e explique claramente a decisão.

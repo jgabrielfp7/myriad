@@ -1,0 +1,23 @@
+{
+  "serial_aparelho": "",
+  "max_posts_dia": 4,
+  "intervalo_minimo_min": 90,
+  "jitter_max_min": 7,
+  "bateria_minima": 0,
+  "max_atraso_horas": 6,
+  "ip_aparelho": "",
+  "aquecimento": {
+    "ativo": false,
+    "contas": [],
+    "min_reels": 15,
+    "max_reels": 25,
+    "chance_curtida": 0.1
+  },
+  "contas_agendamento": [],
+  "janela_inicio": "07:00",
+  "janela_fim": "21:00",
+  "overrides_conta": {},
+  "espacamento_entre_posts_min": 90,
+  "max_carrosseis_dia": 2,
+  "contas_pausadas": []
+}

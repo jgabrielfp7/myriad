@@ -1,0 +1,9 @@
+videos/*.mp4
+logs/
+estado.json
+__pycache__/
+fabrica/entrada/
+fabrica/saida/
+fabrica/edits/
+fabrica/trilhas/
+fabrica/estado_fabrica.json
